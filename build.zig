@@ -18,13 +18,13 @@ pub fn build(b: *std.Build) void {
     exe.linkSystemLibrary(vk_lib_name);
     exe.addLibraryPath(.{ .cwd_relative = "thirdparty/sdl3/lib" });
     exe.addIncludePath(.{ .cwd_relative = "thirdparty/sdl3/include" });
-    if (b.env_map.get("VK_SDK_PATH")) |path| {
-        exe.addLibraryPath(.{ .cwd_relative = std.fmt.allocPrint(b.allocator, "{s}/lib", .{ path }) catch @panic("OOM") });
-        exe.addIncludePath(.{ .cwd_relative = std.fmt.allocPrint(b.allocator, "{s}/include", .{ path }) catch @panic("OOM") });
+    if (b.env_map.get("VULKAN_SDK")) |path| {
+        exe.addLibraryPath(.{ .cwd_relative = std.fmt.allocPrint(b.allocator, "{s}/lib", .{path}) catch @panic("OOM") });
+        exe.addIncludePath(.{ .cwd_relative = std.fmt.allocPrint(b.allocator, "{s}/include", .{path}) catch @panic("OOM") });
     }
-    exe.addCSourceFile(.{ .file = .{ .path = "src/vk_mem_alloc.cpp" }, .flags = &.{ "" } });
+    exe.addCSourceFile(.{ .file = .{ .path = "src/vk_mem_alloc.cpp" }, .flags = &.{""} });
     exe.addIncludePath(.{ .path = "thirdparty/vma/" });
-    exe.addCSourceFile(.{ .file = .{ .path = "src/stb_image.c" }, .flags = &.{ "" } });
+    exe.addCSourceFile(.{ .file = .{ .path = "src/stb_image.c" }, .flags = &.{""} });
     exe.addIncludePath(.{ .path = "thirdparty/stb/" });
     exe.addIncludePath(.{ .path = "thirdparty/imgui/" });
 
@@ -48,6 +48,10 @@ pub fn build(b: *std.Build) void {
     });
     imgui_lib.addIncludePath(.{ .path = "thirdparty/imgui/" });
     imgui_lib.addIncludePath(.{ .path = "thirdparty/sdl3/include/" });
+    if (b.env_map.get("VULKAN_SDK")) |path| {
+        imgui_lib.addLibraryPath(.{ .cwd_relative = std.fmt.allocPrint(b.allocator, "{s}/lib", .{path}) catch @panic("OOM") });
+        imgui_lib.addIncludePath(.{ .cwd_relative = std.fmt.allocPrint(b.allocator, "{s}/include", .{path}) catch @panic("OOM") });
+    }
     imgui_lib.linkLibCpp();
     imgui_lib.addCSourceFiles(.{
         .files = &.{
@@ -102,7 +106,7 @@ fn compile_all_shaders(b: *std.Build, exe: *std.Build.Step.Compile) void {
             const ext = std.fs.path.extension(entry.name);
             if (std.mem.eql(u8, ext, ".glsl")) {
                 const basename = std.fs.path.basename(entry.name);
-                const name = basename[0..basename.len - ext.len];
+                const name = basename[0 .. basename.len - ext.len];
 
                 std.debug.print("Found shader file to compile: {s}. Compiling with name: {s}\n", .{ entry.name, name });
                 add_shader(b, exe, name);
@@ -115,7 +119,7 @@ fn add_shader(b: *std.Build, exe: *std.Build.Step.Compile, name: []const u8) voi
     const source = std.fmt.allocPrint(b.allocator, "shaders/{s}.glsl", .{name}) catch @panic("OOM");
     const outpath = std.fmt.allocPrint(b.allocator, "shaders/{s}.spv", .{name}) catch @panic("OOM");
 
-    const shader_compilation = b.addSystemCommand(&.{ "glslangValidator" });
+    const shader_compilation = b.addSystemCommand(&.{"glslangValidator"});
     shader_compilation.addArg("-V");
     shader_compilation.addArg("-o");
     const output = shader_compilation.addOutputFileArg(outpath);
