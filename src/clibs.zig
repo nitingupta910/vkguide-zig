@@ -20,4 +20,3 @@ pub usingnamespace @cImport({
     @cInclude("cimgui_impl_vulkan.h");
     @cInclude("cimgui_impl_sdl3.h");
 });
-

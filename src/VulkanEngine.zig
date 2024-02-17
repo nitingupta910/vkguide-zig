@@ -126,7 +126,7 @@ depth_format: c.VkFormat = undefined,
 
 upload_context: UploadContext = .{},
 
-frames: [FRAME_OVERLAP]FrameData = .{ FrameData{} } ** FRAME_OVERLAP,
+frames: [FRAME_OVERLAP]FrameData = .{FrameData{}} ** FRAME_OVERLAP,
 
 camera_and_scene_set: c.VkDescriptorSet = VK_NULL_HANDLE,
 camera_and_scene_buffer: AllocatedBuffer = undefined,
@@ -157,7 +157,7 @@ pub const MeshPushConstants = struct {
 
 pub const VulkanDeleter = struct {
     object: ?*anyopaque,
-    delete_fn: *const fn(entry: *VulkanDeleter, self: *Self) void,
+    delete_fn: *const fn (entry: *VulkanDeleter, self: *Self) void,
 
     fn delete(self: *VulkanDeleter, engine: *Self) void {
         self.delete_fn(self, engine);
@@ -175,7 +175,7 @@ pub const VulkanDeleter = struct {
             std.debug.assert(@typeInfo(Fn) == .Fn);
         }
 
-        return VulkanDeleter {
+        return VulkanDeleter{
             .object = object,
             .delete_fn = struct {
                 fn destroy_impl(entry: *VulkanDeleter, self: *Self) void {
@@ -206,12 +206,7 @@ pub const VmaImageDeleter = struct {
 pub fn init(a: std.mem.Allocator) Self {
     check_sdl(c.SDL_Init(c.SDL_INIT_VIDEO));
 
-    const window = c.SDL_CreateWindow(
-        "Vulkan",
-        window_extent.width,
-        window_extent.height,
-        c.SDL_WINDOW_VULKAN | c.SDL_WINDOW_RESIZABLE
-    ) orelse @panic("Failed to create SDL window");
+    const window = c.SDL_CreateWindow("Vulkan", window_extent.width, window_extent.height, c.SDL_WINDOW_VULKAN | c.SDL_WINDOW_RESIZABLE) orelse @panic("Failed to create SDL window");
 
     _ = c.SDL_ShowWindow(window);
 
@@ -240,8 +235,7 @@ pub fn init(a: std.mem.Allocator) Self {
         .device = engine.device,
         .instance = engine.instance,
     });
-    check_vk(c.vmaCreateAllocator(&allocator_ci, &engine.vma_allocator))
-        catch @panic("Failed to create VMA allocator");
+    check_vk(c.vmaCreateAllocator(&allocator_ci, &engine.vma_allocator)) catch @panic("Failed to create VMA allocator");
 
     engine.init_swapchain();
     engine.init_commands();
@@ -273,7 +267,7 @@ fn init_instance(self: *Self) void {
         .debug = true,
         .required_extensions = sdl_extension_slice,
     }) catch |err| {
-        log.err("Failed to create vulkan instance with error: {s}", .{ @errorName(err) });
+        log.err("Failed to create vulkan instance with error: {s}", .{@errorName(err)});
         unreachable;
     };
 
@@ -293,14 +287,14 @@ fn init_device(self: *Self) void {
         .surface = self.surface,
         .criteria = .PreferDiscrete,
     }) catch |err| {
-        log.err("Failed to select physical device with error: {s}", .{ @errorName(err) });
+        log.err("Failed to select physical device with error: {s}", .{@errorName(err)});
         unreachable;
     };
 
     self.physical_device = physical_device.handle;
     self.physical_device_properties = physical_device.properties;
 
-    log.info("The GPU has a minimum buffer alignment of {} bytes", .{ physical_device.properties.limits.minUniformBufferOffsetAlignment });
+    log.info("The GPU has a minimum buffer alignment of {} bytes", .{physical_device.properties.limits.minUniformBufferOffsetAlignment});
 
     self.graphics_queue_family = physical_device.graphics_queue_family;
     self.present_queue_family = physical_device.present_queue_family;
@@ -335,7 +329,7 @@ fn init_swapchain(self: *Self) void {
         .present_queue_family = self.graphics_queue_family,
         .device = self.device,
         .surface = self.surface,
-        .old_swapchain = null ,
+        .old_swapchain = null,
         .vsync = true,
         .window_width = @intCast(win_width),
         .window_height = @intCast(win_height),
@@ -355,7 +349,7 @@ fn init_swapchain(self: *Self) void {
     log.info("Created swapchain", .{});
 
     // Create depth image to associate with the swapchain
-    const extent = c.VkExtent3D {
+    const extent = c.VkExtent3D{
         .width = self.swapchain_extent.width,
         .height = self.swapchain_extent.height,
         .depth = 1,
@@ -383,8 +377,7 @@ fn init_swapchain(self: *Self) void {
         .requiredFlags = c.VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
     });
 
-    check_vk(c.vmaCreateImage(self.vma_allocator, &depth_image_ci, &depth_image_ai, &self.depth_image.image, &self.depth_image.allocation, null))
-        catch @panic("Failed to create depth image");
+    check_vk(c.vmaCreateImage(self.vma_allocator, &depth_image_ci, &depth_image_ai, &self.depth_image.image, &self.depth_image.allocation, null)) catch @panic("Failed to create depth image");
 
     const depth_image_view_ci = std.mem.zeroInit(c.VkImageViewCreateInfo, .{
         .sType = c.VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
@@ -400,8 +393,7 @@ fn init_swapchain(self: *Self) void {
         },
     });
 
-    check_vk(c.vkCreateImageView(self.device, &depth_image_view_ci, vk_alloc_cbs, &self.depth_image_view))
-        catch @panic("Failed to create depth image view");
+    check_vk(c.vkCreateImageView(self.device, &depth_image_view_ci, vk_alloc_cbs, &self.depth_image_view)) catch @panic("Failed to create depth image view");
 
     self.deletion_queue.append(VulkanDeleter.make(self.depth_image_view, c.vkDestroyImageView)) catch @panic("Out of memory");
     self.image_deletion_queue.append(VmaImageDeleter{ .image = self.depth_image }) catch @panic("Out of memory");
@@ -418,8 +410,7 @@ fn init_commands(self: *Self) void {
     });
 
     for (&self.frames) |*frame| {
-        check_vk(c.vkCreateCommandPool(self.device, &command_pool_ci, vk_alloc_cbs, &frame.command_pool))
-            catch log.err("Failed to create command pool", .{});
+        check_vk(c.vkCreateCommandPool(self.device, &command_pool_ci, vk_alloc_cbs, &frame.command_pool)) catch log.err("Failed to create command pool", .{});
         self.deletion_queue.append(VulkanDeleter.make(frame.command_pool, c.vkDestroyCommandPool)) catch @panic("Out of memory");
 
         // Allocate a command buffer from the command pool
@@ -430,8 +421,7 @@ fn init_commands(self: *Self) void {
             .commandBufferCount = 1,
         });
 
-        check_vk(c.vkAllocateCommandBuffers(self.device, &command_buffer_ai, &frame.main_command_buffer))
-            catch @panic("Failed to allocate command buffer");
+        check_vk(c.vkAllocateCommandBuffers(self.device, &command_buffer_ai, &frame.main_command_buffer)) catch @panic("Failed to allocate command buffer");
 
         log.info("Created command pool and command buffer", .{});
     }
@@ -447,8 +437,7 @@ fn init_commands(self: *Self) void {
         .queueFamilyIndex = self.graphics_queue_family,
     });
 
-    check_vk(c.vkCreateCommandPool(self.device, &upload_command_pool_ci, vk_alloc_cbs, &self.upload_context.command_pool))
-        catch @panic("Failed to create upload command pool");
+    check_vk(c.vkCreateCommandPool(self.device, &upload_command_pool_ci, vk_alloc_cbs, &self.upload_context.command_pool)) catch @panic("Failed to create upload command pool");
     self.deletion_queue.append(VulkanDeleter.make(self.upload_context.command_pool, c.vkDestroyCommandPool)) catch @panic("Out of memory");
 
     const upload_command_buffer_ai = std.mem.zeroInit(c.VkCommandBufferAllocateInfo, .{
@@ -458,8 +447,7 @@ fn init_commands(self: *Self) void {
         .commandBufferCount = 1,
     });
 
-    check_vk(c.vkAllocateCommandBuffers(self.device, &upload_command_buffer_ai, &self.upload_context.command_buffer))
-        catch @panic("Failed to allocate upload command buffer");
+    check_vk(c.vkAllocateCommandBuffers(self.device, &upload_command_buffer_ai, &self.upload_context.command_buffer)) catch @panic("Failed to allocate upload command buffer");
 }
 
 fn init_default_renderpass(self: *Self) void {
@@ -544,8 +532,7 @@ fn init_default_renderpass(self: *Self) void {
         .pDependencies = &dependecies[0],
     });
 
-    check_vk(c.vkCreateRenderPass(self.device, &render_pass_create_info, vk_alloc_cbs, &self.render_pass))
-        catch @panic("Failed to create render pass");
+    check_vk(c.vkCreateRenderPass(self.device, &render_pass_create_info, vk_alloc_cbs, &self.render_pass)) catch @panic("Failed to create render pass");
     self.deletion_queue.append(VulkanDeleter.make(self.render_pass, c.vkDestroyRenderPass)) catch @panic("Out of memory");
 
     log.info("Created render pass", .{});
@@ -569,12 +556,11 @@ fn init_framebuffers(self: *Self) void {
             self.depth_image_view,
         };
         framebuffer_ci.pAttachments = &attachements[0];
-        check_vk(c.vkCreateFramebuffer(self.device, &framebuffer_ci, vk_alloc_cbs, framebuffer))
-            catch @panic("Failed to create framebuffer");
+        check_vk(c.vkCreateFramebuffer(self.device, &framebuffer_ci, vk_alloc_cbs, framebuffer)) catch @panic("Failed to create framebuffer");
         self.deletion_queue.append(VulkanDeleter.make(framebuffer.*, c.vkDestroyFramebuffer)) catch @panic("Out of memory");
     }
 
-    log.info("Created {} framebuffers", .{ self.framebuffers.len });
+    log.info("Created {} framebuffers", .{self.framebuffers.len});
 }
 
 fn init_sync_structures(self: *Self) void {
@@ -588,16 +574,12 @@ fn init_sync_structures(self: *Self) void {
     });
 
     for (&self.frames) |*frame| {
-        check_vk(c.vkCreateSemaphore(self.device, &semaphore_ci, vk_alloc_cbs, &frame.present_semaphore))
-            catch @panic("Failed to create present semaphore");
+        check_vk(c.vkCreateSemaphore(self.device, &semaphore_ci, vk_alloc_cbs, &frame.present_semaphore)) catch @panic("Failed to create present semaphore");
         self.deletion_queue.append(VulkanDeleter.make(frame.present_semaphore, c.vkDestroySemaphore)) catch @panic("Out of memory");
-        check_vk(c.vkCreateSemaphore(self.device, &semaphore_ci, vk_alloc_cbs, &frame.render_semaphore))
-            catch @panic("Failed to create render semaphore");
+        check_vk(c.vkCreateSemaphore(self.device, &semaphore_ci, vk_alloc_cbs, &frame.render_semaphore)) catch @panic("Failed to create render semaphore");
         self.deletion_queue.append(VulkanDeleter.make(frame.render_semaphore, c.vkDestroySemaphore)) catch @panic("Out of memory");
 
-
-        check_vk(c.vkCreateFence(self.device, &fence_ci, vk_alloc_cbs, &frame.render_fence))
-            catch @panic("Failed to create render fence");
+        check_vk(c.vkCreateFence(self.device, &fence_ci, vk_alloc_cbs, &frame.render_fence)) catch @panic("Failed to create render fence");
         self.deletion_queue.append(VulkanDeleter.make(frame.render_fence, c.vkDestroyFence)) catch @panic("Out of memory");
     }
 
@@ -606,8 +588,7 @@ fn init_sync_structures(self: *Self) void {
         .sType = c.VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
     });
 
-    check_vk(c.vkCreateFence(self.device, &upload_fence_ci, vk_alloc_cbs, &self.upload_context.upload_fence))
-        catch @panic("Failed to create upload fence");
+    check_vk(c.vkCreateFence(self.device, &upload_fence_ci, vk_alloc_cbs, &self.upload_context.upload_fence)) catch @panic("Failed to create upload fence");
 
     self.deletion_queue.append(VulkanDeleter.make(self.upload_context.upload_fence, c.vkDestroyFence)) catch @panic("Out of memory");
 
@@ -688,8 +669,7 @@ fn init_pipelines(self: *Self) void {
         .sType = c.VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
     });
     var triangle_pipeline_layout: c.VkPipelineLayout = undefined;
-    check_vk(c.vkCreatePipelineLayout(self.device, &pipeline_layout_ci, vk_alloc_cbs, &triangle_pipeline_layout))
-        catch @panic("Failed to create pipeline layout");
+    check_vk(c.vkCreatePipelineLayout(self.device, &pipeline_layout_ci, vk_alloc_cbs, &triangle_pipeline_layout)) catch @panic("Failed to create pipeline layout");
     self.deletion_queue.append(VulkanDeleter.make(triangle_pipeline_layout, c.vkDestroyPipelineLayout)) catch @panic("Out of memory");
 
     const vert_stage_ci = std.mem.zeroInit(c.VkPipelineShaderStageCreateInfo, .{
@@ -782,7 +762,6 @@ fn init_pipelines(self: *Self) void {
 
     _ = self.create_material(red_triangle_pipeline, triangle_pipeline_layout, "red_triangle_mat");
 
-
     const rgb_vert_code align(4) = @embedFile("colored_triangle.vert").*;
     const rgb_frag_code align(4) = @embedFile("colored_triangle.frag").*;
     const rgb_vert_module = create_shader_module(self, &rgb_vert_code) orelse VK_NULL_HANDLE;
@@ -851,10 +830,8 @@ fn init_pipelines(self: *Self) void {
     });
 
     var mesh_pipeline_layout: c.VkPipelineLayout = undefined;
-    check_vk(c.vkCreatePipelineLayout(self.device, &mesh_pipeline_layout_ci, vk_alloc_cbs, &mesh_pipeline_layout))
-        catch @panic("Failed to create mesh pipeline layout");
-    self.deletion_queue.append(VulkanDeleter.make(mesh_pipeline_layout, c.vkDestroyPipelineLayout))
-        catch @panic("Out of memory");
+    check_vk(c.vkCreatePipelineLayout(self.device, &mesh_pipeline_layout_ci, vk_alloc_cbs, &mesh_pipeline_layout)) catch @panic("Failed to create mesh pipeline layout");
+    self.deletion_queue.append(VulkanDeleter.make(mesh_pipeline_layout, c.vkDestroyPipelineLayout)) catch @panic("Out of memory");
 
     pipeline_builder.pipeline_layout = mesh_pipeline_layout;
 
@@ -879,10 +856,8 @@ fn init_pipelines(self: *Self) void {
     textured_pipe_layout_ci.pSetLayouts = &textured_set_layoyts[0];
 
     var textured_pipe_layout: c.VkPipelineLayout = undefined;
-    check_vk(c.vkCreatePipelineLayout(self.device, &textured_pipe_layout_ci, vk_alloc_cbs, &textured_pipe_layout))
-        catch @panic("Failed to create textured mesh pipeline layout");
-    self.deletion_queue.append(VulkanDeleter.make(textured_pipe_layout, c.vkDestroyPipelineLayout))
-        catch @panic("Out of memory");
+    check_vk(c.vkCreatePipelineLayout(self.device, &textured_pipe_layout_ci, vk_alloc_cbs, &textured_pipe_layout)) catch @panic("Failed to create textured mesh pipeline layout");
+    self.deletion_queue.append(VulkanDeleter.make(textured_pipe_layout, c.vkDestroyPipelineLayout)) catch @panic("Out of memory");
 
     const textured_lit_frag_code align(4) = @embedFile("textured_lit.frag").*;
     const textured_lit_frag = create_shader_module(self, &textured_lit_frag_code) orelse VK_NULL_HANDLE;
@@ -893,17 +868,28 @@ fn init_pipelines(self: *Self) void {
     const textured_mesh_pipeline = pipeline_builder.build(self.device, self.render_pass);
 
     _ = self.create_material(textured_mesh_pipeline, textured_pipe_layout, "textured_mesh");
-    self.deletion_queue.append(VulkanDeleter.make(textured_mesh_pipeline, c.vkDestroyPipeline))
-        catch @panic("Out of memory");
+    self.deletion_queue.append(VulkanDeleter.make(textured_mesh_pipeline, c.vkDestroyPipeline)) catch @panic("Out of memory");
 }
 
 fn init_descriptors(self: *Self) void {
     // Descriptor pool
     const pool_sizes = [_]c.VkDescriptorPoolSize{
-        .{ .type = c.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, .descriptorCount = 10, },
-        .{ .type = c.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, .descriptorCount = 10, },
-        .{ .type = c.VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, .descriptorCount = 10, },
-        .{ .type = c.VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, .descriptorCount = 10, },
+        .{
+            .type = c.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+            .descriptorCount = 10,
+        },
+        .{
+            .type = c.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
+            .descriptorCount = 10,
+        },
+        .{
+            .type = c.VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+            .descriptorCount = 10,
+        },
+        .{
+            .type = c.VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+            .descriptorCount = 10,
+        },
     };
 
     const pool_ci = std.mem.zeroInit(c.VkDescriptorPoolCreateInfo, .{
@@ -914,8 +900,7 @@ fn init_descriptors(self: *Self) void {
         .pPoolSizes = &pool_sizes[0],
     });
 
-    check_vk(c.vkCreateDescriptorPool(self.device, &pool_ci, vk_alloc_cbs, &self.descriptor_pool))
-        catch @panic("Failed to create descriptor pool");
+    check_vk(c.vkCreateDescriptorPool(self.device, &pool_ci, vk_alloc_cbs, &self.descriptor_pool)) catch @panic("Failed to create descriptor pool");
 
     self.deletion_queue.append(VulkanDeleter.make(self.descriptor_pool, c.vkDestroyDescriptorPool)) catch @panic("Out of memory");
 
@@ -954,8 +939,7 @@ fn init_descriptors(self: *Self) void {
         .pBindings = &bindings[0],
     });
 
-    check_vk(c.vkCreateDescriptorSetLayout(self.device, &global_set_ci, vk_alloc_cbs, &self.global_set_layout))
-        catch @panic("Failed to create global descriptor set layout");
+    check_vk(c.vkCreateDescriptorSetLayout(self.device, &global_set_ci, vk_alloc_cbs, &self.global_set_layout)) catch @panic("Failed to create global descriptor set layout");
 
     self.deletion_queue.append(VulkanDeleter.make(self.global_set_layout, c.vkDestroyDescriptorSetLayout)) catch @panic("Out of memory");
 
@@ -979,8 +963,7 @@ fn init_descriptors(self: *Self) void {
         .pBindings = &object_buffer_binding,
     });
 
-    check_vk(c.vkCreateDescriptorSetLayout(self.device, &object_set_ci, vk_alloc_cbs, &self.object_set_layout))
-        catch @panic("Failed to create object descriptor set layout");
+    check_vk(c.vkCreateDescriptorSetLayout(self.device, &object_set_ci, vk_alloc_cbs, &self.object_set_layout)) catch @panic("Failed to create object descriptor set layout");
 
     self.deletion_queue.append(VulkanDeleter.make(self.object_set_layout, c.vkDestroyDescriptorSetLayout)) catch @panic("Out of memory");
 
@@ -992,10 +975,7 @@ fn init_descriptors(self: *Self) void {
         FRAME_OVERLAP * self.pad_uniform_buffer_size(@sizeOf(GPUCameraData)) +
         FRAME_OVERLAP * self.pad_uniform_buffer_size(@sizeOf(GPUSceneData));
 
-    self.camera_and_scene_buffer = self.create_buffer(
-        camera_and_scene_buffer_size,
-        c.VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-        c.VMA_MEMORY_USAGE_CPU_TO_GPU);
+    self.camera_and_scene_buffer = self.create_buffer(camera_and_scene_buffer_size, c.VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, c.VMA_MEMORY_USAGE_CPU_TO_GPU);
     self.buffer_deletion_queue.append(VmaBufferDeleter{ .buffer = self.camera_and_scene_buffer }) catch @panic("Out of memory");
 
     // Camera and scene descriptor set
@@ -1007,8 +987,7 @@ fn init_descriptors(self: *Self) void {
     });
 
     // Allocate a single set for multiple frame worth of camera and scene data
-    check_vk(c.vkAllocateDescriptorSets(self.device, &global_set_alloc_info, &self.camera_and_scene_set))
-        catch @panic("Failed to allocate global descriptor set");
+    check_vk(c.vkAllocateDescriptorSets(self.device, &global_set_alloc_info, &self.camera_and_scene_set)) catch @panic("Failed to allocate global descriptor set");
 
     // Camera
     const camera_buffer_info = std.mem.zeroInit(c.VkDescriptorBufferInfo, .{
@@ -1040,13 +1019,12 @@ fn init_descriptors(self: *Self) void {
         .pBufferInfo = &scene_parameters_buffer_info,
     });
 
-    const camera_and_scene_writes = [_]c.VkWriteDescriptorSet {
+    const camera_and_scene_writes = [_]c.VkWriteDescriptorSet{
         camera_write,
         scene_parameters_write,
     };
 
-    c.vkUpdateDescriptorSets(
-        self.device, @as(u32, @intCast(camera_and_scene_writes.len)), &camera_and_scene_writes[0], 0, null);
+    c.vkUpdateDescriptorSets(self.device, @as(u32, @intCast(camera_and_scene_writes.len)), &camera_and_scene_writes[0], 0, null);
 
     // =================================
     // Texture set layout
@@ -1064,11 +1042,9 @@ fn init_descriptors(self: *Self) void {
         .pBindings = &texture_bind,
     });
 
-    check_vk(c.vkCreateDescriptorSetLayout(self.device, &texture_set_ci, vk_alloc_cbs, &self.single_texture_set_layout))
-        catch @panic("Failed to create texture descriptor set layout");
+    check_vk(c.vkCreateDescriptorSetLayout(self.device, &texture_set_ci, vk_alloc_cbs, &self.single_texture_set_layout)) catch @panic("Failed to create texture descriptor set layout");
 
-    self.deletion_queue.append(VulkanDeleter.make(self.single_texture_set_layout, c.vkDestroyDescriptorSetLayout))
-        catch @panic("Out of memory");
+    self.deletion_queue.append(VulkanDeleter.make(self.single_texture_set_layout, c.vkDestroyDescriptorSetLayout)) catch @panic("Out of memory");
 
     for (0..FRAME_OVERLAP) |i| {
         // ======================================================================
@@ -1083,8 +1059,7 @@ fn init_descriptors(self: *Self) void {
             .pSetLayouts = &self.object_set_layout,
         });
 
-        check_vk(c.vkAllocateDescriptorSets(self.device, &object_set_alloc_info, &self.frames[i].object_descriptor_set))
-            catch @panic("Failed to allocate object descriptor set");
+        check_vk(c.vkAllocateDescriptorSets(self.device, &object_set_alloc_info, &self.frames[i].object_descriptor_set)) catch @panic("Failed to allocate object descriptor set");
 
         // ======================================================================
         // Buffer allocations
@@ -1092,10 +1067,7 @@ fn init_descriptors(self: *Self) void {
 
         // Object buffer
         const MAX_OBJECTS = 10000;
-        self.frames[i].object_buffer = self.create_buffer(
-            MAX_OBJECTS * @sizeOf(GPUObjectData),
-            c.VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
-            c.VMA_MEMORY_USAGE_CPU_TO_GPU);
+        self.frames[i].object_buffer = self.create_buffer(MAX_OBJECTS * @sizeOf(GPUObjectData), c.VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, c.VMA_MEMORY_USAGE_CPU_TO_GPU);
         self.buffer_deletion_queue.append(VmaBufferDeleter{ .buffer = self.frames[i].object_buffer }) catch @panic("Out of memory");
 
         // ======================================================================
@@ -1145,7 +1117,7 @@ fn create_shader_module(self: *Self, code: []const u8) ?c.VkShaderModule {
 
     var shader_module: c.VkShaderModule = undefined;
     check_vk(c.vkCreateShaderModule(self.device, &shader_module_ci, vk_alloc_cbs, &shader_module)) catch |err| {
-        log.err("Failed to create shader module with error: {s}", .{ @errorName(err) });
+        log.err("Failed to create shader module with error: {s}", .{@errorName(err)});
         return null;
     };
 
@@ -1153,7 +1125,7 @@ fn create_shader_module(self: *Self, code: []const u8) ?c.VkShaderModule {
 }
 
 fn init_scene(self: *Self) void {
-    const monkey = RenderObject {
+    const monkey = RenderObject{
         .mesh = self.meshes.getPtr("monkey") orelse @panic("Failed to get monkey mesh"),
         .material = self.materials.getPtr("default_mesh") orelse @panic("Failed to get default mesh material"),
         .transform = Mat4.IDENTITY,
@@ -1196,8 +1168,7 @@ fn init_scene(self: *Self) void {
         .pSetLayouts = &self.single_texture_set_layout,
     });
 
-    check_vk(c.vkAllocateDescriptorSets(self.device, &descriptor_set_alloc_info, &material.texture_set))
-        catch @panic("Failed to allocate descriptor set");
+    check_vk(c.vkAllocateDescriptorSets(self.device, &descriptor_set_alloc_info, &material.texture_set)) catch @panic("Failed to allocate descriptor set");
 
     // Sampler
     const sampler_ci = std.mem.zeroInit(c.VkSamplerCreateInfo, .{
@@ -1210,8 +1181,7 @@ fn init_scene(self: *Self) void {
     });
 
     var sampler: c.VkSampler = undefined;
-    check_vk(c.vkCreateSampler(self.device, &sampler_ci, vk_alloc_cbs, &sampler))
-        catch @panic("Failed to create sampler");
+    check_vk(c.vkCreateSampler(self.device, &sampler_ci, vk_alloc_cbs, &sampler)) catch @panic("Failed to create sampler");
     self.deletion_queue.append(VulkanDeleter.make(sampler, c.vkDestroySampler)) catch @panic("Out of memory");
 
     const lost_empire_tex = (self.textures.get("empire_diffuse") orelse @panic("Failed to get empire texture"));
@@ -1233,7 +1203,7 @@ fn init_scene(self: *Self) void {
 
     c.vkUpdateDescriptorSets(self.device, 1, &write_descriptor_set, 0, null);
 
-    const lost_empire = RenderObject {
+    const lost_empire = RenderObject{
         .mesh = self.meshes.getPtr("lost_empire") orelse @panic("Failed to get triangle mesh"),
         .transform = Mat4.translation(Vec3.make(5.0, -10.0, 0.0)),
         .material = material,
@@ -1248,7 +1218,7 @@ fn init_scene(self: *Self) void {
             const scale = Mat4.scale(Vec3.make(0.2, 0.2, 0.2));
             const transform = Mat4.mul(translation, scale);
 
-            const tri = RenderObject {
+            const tri = RenderObject{
                 .mesh = self.meshes.getPtr("triangle") orelse @panic("Failed to get triangle mesh"),
                 .material = self.materials.getPtr("default_mesh") orelse @panic("Failed to get default mesh material"),
                 .transform = transform,
@@ -1261,17 +1231,50 @@ fn init_scene(self: *Self) void {
 
 fn init_imgui(self: *Self) void {
     const pool_sizes = [_]c.VkDescriptorPoolSize{
-        .{ .type = c.VK_DESCRIPTOR_TYPE_SAMPLER, .descriptorCount = 1000, },
-        .{ .type = c.VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, .descriptorCount = 1000, },
-        .{ .type = c.VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, .descriptorCount = 1000, },
-        .{ .type = c.VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, .descriptorCount = 1000, },
-        .{ .type = c.VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, .descriptorCount = 1000, },
-        .{ .type = c.VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, .descriptorCount = 1000, },
-        .{ .type = c.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, .descriptorCount = 1000, },
-        .{ .type = c.VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, .descriptorCount = 1000, },
-        .{ .type = c.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, .descriptorCount = 1000, },
-        .{ .type = c.VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, .descriptorCount = 1000, },
-        .{ .type = c.VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, .descriptorCount = 1000, },
+        .{
+            .type = c.VK_DESCRIPTOR_TYPE_SAMPLER,
+            .descriptorCount = 1000,
+        },
+        .{
+            .type = c.VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+            .descriptorCount = 1000,
+        },
+        .{
+            .type = c.VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
+            .descriptorCount = 1000,
+        },
+        .{
+            .type = c.VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
+            .descriptorCount = 1000,
+        },
+        .{
+            .type = c.VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER,
+            .descriptorCount = 1000,
+        },
+        .{
+            .type = c.VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER,
+            .descriptorCount = 1000,
+        },
+        .{
+            .type = c.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+            .descriptorCount = 1000,
+        },
+        .{
+            .type = c.VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+            .descriptorCount = 1000,
+        },
+        .{
+            .type = c.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
+            .descriptorCount = 1000,
+        },
+        .{
+            .type = c.VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
+            .descriptorCount = 1000,
+        },
+        .{
+            .type = c.VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,
+            .descriptorCount = 1000,
+        },
     };
 
     const pool_ci = std.mem.zeroInit(c.VkDescriptorPoolCreateInfo, .{
@@ -1283,8 +1286,7 @@ fn init_imgui(self: *Self) void {
     });
 
     var imgui_pool: c.VkDescriptorPool = undefined;
-    check_vk(c.vkCreateDescriptorPool(self.device, &pool_ci, vk_alloc_cbs, &imgui_pool))
-        catch @panic("Failed to create imgui descriptor pool");
+    check_vk(c.vkCreateDescriptorPool(self.device, &pool_ci, vk_alloc_cbs, &imgui_pool)) catch @panic("Failed to create imgui descriptor pool");
 
     _ = c.ImGui_CreateContext(null);
     _ = c.cImGui_ImplSDL3_InitForVulkan(self.window);
@@ -1308,8 +1310,7 @@ fn init_imgui(self: *Self) void {
 }
 
 pub fn cleanup(self: *Self) void {
-    check_vk(c.vkDeviceWaitIdle(self.device))
-        catch @panic("Failed to wait for device idle");
+    check_vk(c.vkDeviceWaitIdle(self.device)) catch @panic("Failed to wait for device idle");
 
     // TODO: this is a horrible way to keep track of the meshes to free. Quick and dirty hack.
     var mesh_it = self.meshes.iterator();
@@ -1338,7 +1339,6 @@ pub fn cleanup(self: *Self) void {
         entry.delete(self);
     }
     self.deletion_queue.deinit();
-
 
     self.allocator.free(self.framebuffers);
     self.allocator.free(self.swapchain_image_views);
@@ -1386,34 +1386,29 @@ fn load_textures(self: *Self) void {
         .image_view = VK_NULL_HANDLE,
     };
 
-    check_vk(c.vkCreateImageView(self.device, &image_view_ci, vk_alloc_cbs, &lost_empire.image_view))
-        catch @panic("Failed to create image view");
+    check_vk(c.vkCreateImageView(self.device, &image_view_ci, vk_alloc_cbs, &lost_empire.image_view)) catch @panic("Failed to create image view");
     self.deletion_queue.append(VulkanDeleter.make(lost_empire.image_view, c.vkDestroyImageView)) catch @panic("Out of memory");
 
     self.textures.put("empire_diffuse", lost_empire) catch @panic("Out of memory");
 }
 
 fn load_meshes(self: *Self) void {
-    const vertices = [_]mesh_mod.Vertex{
-        .{
-            .position = Vec3.make(1.0, 1.0, 0.0),
-            .normal = undefined,
-            .color = Vec3.make(0.0, 1.0, 0.0),
-            .uv = Vec2.make(1.0, 1.0),
-        },
-        .{
-            .position = Vec3.make(-1.0, 1.0, 0.0),
-            .normal = undefined,
-            .color = Vec3.make(0.0, 1.0, 0.0),
-            .uv = Vec2.make(0.0, 1.0),
-        },
-        .{
-            .position = Vec3.make(0.0, -1.0, 0.0),
-            .normal = undefined,
-            .color = Vec3.make(0.0, 1.0, 0.0),
-            .uv = Vec2.make(0.5, 0.0),
-        }
-    };
+    const vertices = [_]mesh_mod.Vertex{ .{
+        .position = Vec3.make(1.0, 1.0, 0.0),
+        .normal = undefined,
+        .color = Vec3.make(0.0, 1.0, 0.0),
+        .uv = Vec2.make(1.0, 1.0),
+    }, .{
+        .position = Vec3.make(-1.0, 1.0, 0.0),
+        .normal = undefined,
+        .color = Vec3.make(0.0, 1.0, 0.0),
+        .uv = Vec2.make(0.0, 1.0),
+    }, .{
+        .position = Vec3.make(0.0, -1.0, 0.0),
+        .normal = undefined,
+        .color = Vec3.make(0.0, 1.0, 0.0),
+        .uv = Vec2.make(0.5, 0.0),
+    } };
 
     var triangle_mesh = Mesh{
         .vertices = self.allocator.dupe(mesh_mod.Vertex, vertices[0..]) catch @panic("Out of memory"),
@@ -1451,19 +1446,12 @@ fn upload_mesh(self: *Self, mesh: *Mesh) void {
     });
 
     var staging_buffer: AllocatedBuffer = undefined;
-    check_vk(c.vmaCreateBuffer(
-        self.vma_allocator,
-        &staging_buffer_ci,
-        &staging_buffer_ai,
-        &staging_buffer.buffer,
-        &staging_buffer.allocation,
-        null)) catch @panic("Failed to create vertex buffer");
+    check_vk(c.vmaCreateBuffer(self.vma_allocator, &staging_buffer_ci, &staging_buffer_ai, &staging_buffer.buffer, &staging_buffer.allocation, null)) catch @panic("Failed to create vertex buffer");
 
-    log.info("Created staging buffer {}", .{ @intFromPtr(mesh.vertex_buffer.buffer) });
+    log.info("Created staging buffer {}", .{@intFromPtr(mesh.vertex_buffer.buffer)});
 
     var data: ?*align(@alignOf(mesh_mod.Vertex)) anyopaque = undefined;
-    check_vk(c.vmaMapMemory(self.vma_allocator, staging_buffer.allocation, &data))
-        catch @panic("Failed to map vertex buffer");
+    check_vk(c.vmaMapMemory(self.vma_allocator, staging_buffer.allocation, &data)) catch @panic("Failed to map vertex buffer");
     @memcpy(@as([*]mesh_mod.Vertex, @ptrCast(data)), mesh.vertices);
     c.vmaUnmapMemory(self.vma_allocator, staging_buffer.allocation);
 
@@ -1479,19 +1467,11 @@ fn upload_mesh(self: *Self, mesh: *Mesh) void {
         .usage = c.VMA_MEMORY_USAGE_GPU_ONLY,
     });
 
-    check_vk(c.vmaCreateBuffer(
-        self.vma_allocator,
-        &gpu_buffer_ci,
-        &gpu_buffer_ai,
-        &mesh.vertex_buffer.buffer,
-        &mesh.vertex_buffer.allocation,
-        null)) catch @panic("Failed to create vertex buffer");
+    check_vk(c.vmaCreateBuffer(self.vma_allocator, &gpu_buffer_ci, &gpu_buffer_ai, &mesh.vertex_buffer.buffer, &mesh.vertex_buffer.allocation, null)) catch @panic("Failed to create vertex buffer");
 
     log.info("Created GPU buffer for mesh", .{});
 
-    self.buffer_deletion_queue.append(
-        VmaBufferDeleter{ .buffer = mesh.vertex_buffer }
-    ) catch @panic("Out of memory");
+    self.buffer_deletion_queue.append(VmaBufferDeleter{ .buffer = mesh.vertex_buffer }) catch @panic("Out of memory");
 
     // Now we can copy immediate the content of the staging buffer to the gpu
     // only memory.
@@ -1513,7 +1493,7 @@ fn upload_mesh(self: *Self, mesh: *Mesh) void {
     });
 
     // We can free the staging buffer at this point.
-    c.vmaDestroyBuffer(self.vma_allocator, staging_buffer.buffer, staging_buffer.allocation); 
+    c.vmaDestroyBuffer(self.vma_allocator, staging_buffer.buffer, staging_buffer.allocation);
 }
 
 pub fn run(self: *Self) void {
@@ -1583,7 +1563,6 @@ pub fn run(self: *Self) void {
                     else => {},
                 }
             }
-
         }
 
         if (self.camera_input.squared_norm() > (0.1 * 0.1)) {
@@ -1614,9 +1593,7 @@ pub fn run(self: *Self) void {
         if (TitleDelay.accumulator > 0.1) {
             TitleDelay.accumulator = 0.0;
             const fps = 1.0 / delta;
-            const new_title = std.fmt.allocPrintZ(
-                self.allocator, "Vulkan - FPS: {d:6.3}, ms: {d:6.3}", .{ fps, delta * 1000.0 }
-            ) catch @panic("Out of memory");
+            const new_title = std.fmt.allocPrintZ(self.allocator, "Vulkan - FPS: {d:6.3}, ms: {d:6.3}", .{ fps, delta * 1000.0 }) catch @panic("Out of memory");
             defer self.allocator.free(new_title);
             _ = c.SDL_SetWindowTitle(self.window, new_title.ptr);
         }
@@ -1632,27 +1609,22 @@ fn draw(self: *Self) void {
     const timeout: u64 = 1_000_000_000; // 1 second in nanonesconds
     const frame = self.get_current_frame();
 
-    check_vk(c.vkWaitForFences(self.device, 1, &frame.render_fence, c.VK_TRUE, timeout))
-        catch @panic("Failed to wait for render fence");
-    check_vk(c.vkResetFences(self.device, 1, &frame.render_fence))
-        catch @panic("Failed to reset render fence");
+    check_vk(c.vkWaitForFences(self.device, 1, &frame.render_fence, c.VK_TRUE, timeout)) catch @panic("Failed to wait for render fence");
+    check_vk(c.vkResetFences(self.device, 1, &frame.render_fence)) catch @panic("Failed to reset render fence");
 
     var swapchain_image_index: u32 = undefined;
-    check_vk(c.vkAcquireNextImageKHR(self.device, self.swapchain, timeout, frame.present_semaphore, VK_NULL_HANDLE, &swapchain_image_index))
-        catch @panic("Failed to acquire swapchain image");
+    check_vk(c.vkAcquireNextImageKHR(self.device, self.swapchain, timeout, frame.present_semaphore, VK_NULL_HANDLE, &swapchain_image_index)) catch @panic("Failed to acquire swapchain image");
 
     var cmd = frame.main_command_buffer;
 
-    check_vk(c.vkResetCommandBuffer(cmd, 0))
-        catch @panic("Failed to reset command buffer");
+    check_vk(c.vkResetCommandBuffer(cmd, 0)) catch @panic("Failed to reset command buffer");
 
     const cmd_begin_info = std.mem.zeroInit(c.VkCommandBufferBeginInfo, .{
         .sType = c.VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
         .flags = c.VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
     });
 
-    check_vk(c.vkBeginCommandBuffer(cmd, &cmd_begin_info))
-        catch @panic("Failed to begin command buffer");
+    check_vk(c.vkBeginCommandBuffer(cmd, &cmd_begin_info)) catch @panic("Failed to begin command buffer");
 
     // Make a claer color that changes with each frame (120*pi frame period)
     // 0.11 and 0.12 fix for change in fabs
@@ -1693,10 +1665,8 @@ fn draw(self: *Self) void {
     // UI
     c.cImGui_ImplVulkan_RenderDrawData(c.ImGui_GetDrawData(), cmd);
 
-
     c.vkCmdEndRenderPass(cmd);
-    check_vk(c.vkEndCommandBuffer(cmd))
-        catch @panic("Failed to end command buffer");
+    check_vk(c.vkEndCommandBuffer(cmd)) catch @panic("Failed to end command buffer");
 
     const wait_stage = @as(u32, @intCast(c.VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT));
     const submit_info = std.mem.zeroInit(c.VkSubmitInfo, .{
@@ -1709,8 +1679,7 @@ fn draw(self: *Self) void {
         .signalSemaphoreCount = 1,
         .pSignalSemaphores = &frame.render_semaphore,
     });
-    check_vk(c.vkQueueSubmit(self.graphics_queue, 1, &submit_info, frame.render_fence))
-        catch @panic("Failed to submit to graphics queue");
+    check_vk(c.vkQueueSubmit(self.graphics_queue, 1, &submit_info, frame.render_fence)) catch @panic("Failed to submit to graphics queue");
 
     const present_info = std.mem.zeroInit(c.VkPresentInfoKHR, .{
         .sType = c.VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
@@ -1720,8 +1689,7 @@ fn draw(self: *Self) void {
         .pSwapchains = &self.swapchain,
         .pImageIndices = &swapchain_image_index,
     });
-    check_vk(c.vkQueuePresentKHR(self.present_queue, &present_info))
-        catch @panic("Failed to present swapchain image");
+    check_vk(c.vkQueuePresentKHR(self.present_queue, &present_info)) catch @panic("Failed to present swapchain image");
 
     self.frame_number +%= 1;
 }
@@ -1753,8 +1721,7 @@ fn draw_objects(self: *Self, cmd: c.VkCommandBuffer, objects: []RenderObject) vo
     const scene_data_offset = scene_data_base_offset + padded_scene_data_size * frame_index;
 
     var data: ?*align(@alignOf(GPUCameraData)) anyopaque = undefined;
-    check_vk(c.vmaMapMemory(self.vma_allocator, self.camera_and_scene_buffer.allocation, &data))
-        catch @panic("Failed to map camera buffer");
+    check_vk(c.vmaMapMemory(self.vma_allocator, self.camera_and_scene_buffer.allocation, &data)) catch @panic("Failed to map camera buffer");
 
     const camera_data: *GPUCameraData = @ptrFromInt(@intFromPtr(data) + camera_data_offset);
     const scene_data: *GPUSceneData = @ptrFromInt(@intFromPtr(data) + scene_data_offset);
@@ -1771,8 +1738,7 @@ fn draw_objects(self: *Self, cmd: c.VkCommandBuffer, objects: []RenderObject) vo
     // we can more easily pass them back and forth from C and do those kind of
     // conversions.
     var object_data: ?*align(@alignOf(GPUObjectData)) anyopaque = undefined;
-    check_vk(c.vmaMapMemory(self.vma_allocator, self.get_current_frame().object_buffer.allocation, &object_data))
-        catch @panic("Failed to map object buffer");
+    check_vk(c.vmaMapMemory(self.vma_allocator, self.get_current_frame().object_buffer.allocation, &object_data)) catch @panic("Failed to map object buffer");
     var object_data_arr: [*]GPUObjectData = @ptrCast(object_data orelse unreachable);
     for (objects, 0..) |object, index| {
         object_data_arr[index] = GPUObjectData{
@@ -1783,8 +1749,7 @@ fn draw_objects(self: *Self, cmd: c.VkCommandBuffer, objects: []RenderObject) vo
 
     for (objects, 0..) |object, index| {
         if (index == 0 or object.material != objects[index - 1].material) {
-            c.vkCmdBindPipeline(
-                cmd, c.VK_PIPELINE_BIND_POINT_GRAPHICS, object.material.pipeline);
+            c.vkCmdBindPipeline(cmd, c.VK_PIPELINE_BIND_POINT_GRAPHICS, object.material.pipeline);
 
             // Compute the offset for dynamic uniform buffers (for now just the one containing scene data, the
             // camera data is not dynamic)
@@ -1793,37 +1758,13 @@ fn draw_objects(self: *Self, cmd: c.VkCommandBuffer, objects: []RenderObject) vo
                 @as(u32, @intCast(scene_data_offset)),
             };
 
-            c.vkCmdBindDescriptorSets(
-                cmd,
-                c.VK_PIPELINE_BIND_POINT_GRAPHICS,
-                object.material.pipeline_layout,
-                0,
-                1,
-                &self.camera_and_scene_set,
-                @as(u32, @intCast(uniform_offsets.len)),
-                &uniform_offsets[0]);
+            c.vkCmdBindDescriptorSets(cmd, c.VK_PIPELINE_BIND_POINT_GRAPHICS, object.material.pipeline_layout, 0, 1, &self.camera_and_scene_set, @as(u32, @intCast(uniform_offsets.len)), &uniform_offsets[0]);
 
-            c.vkCmdBindDescriptorSets(
-                cmd,
-                c.VK_PIPELINE_BIND_POINT_GRAPHICS,
-                object.material.pipeline_layout,
-                1,
-                1,
-                &self.get_current_frame().object_descriptor_set,
-                0,
-                null);
+            c.vkCmdBindDescriptorSets(cmd, c.VK_PIPELINE_BIND_POINT_GRAPHICS, object.material.pipeline_layout, 1, 1, &self.get_current_frame().object_descriptor_set, 0, null);
         }
 
         if (object.material.texture_set != VK_NULL_HANDLE) {
-            c.vkCmdBindDescriptorSets(
-                cmd,
-                c.VK_PIPELINE_BIND_POINT_GRAPHICS,
-                object.material.pipeline_layout,
-                2,
-                1,
-                &object.material.texture_set,
-                0,
-                null);
+            c.vkCmdBindDescriptorSets(cmd, c.VK_PIPELINE_BIND_POINT_GRAPHICS, object.material.pipeline_layout, 2, 1, &object.material.texture_set, 0, null);
         }
 
         const push_constants = MeshPushConstants{
@@ -1831,18 +1772,11 @@ fn draw_objects(self: *Self, cmd: c.VkCommandBuffer, objects: []RenderObject) vo
             .render_matrix = object.transform,
         };
 
-        c.vkCmdPushConstants(
-            cmd,
-            object.material.pipeline_layout,
-            c.VK_SHADER_STAGE_VERTEX_BIT,
-            0,
-            @sizeOf(MeshPushConstants),
-            &push_constants);
+        c.vkCmdPushConstants(cmd, object.material.pipeline_layout, c.VK_SHADER_STAGE_VERTEX_BIT, 0, @sizeOf(MeshPushConstants), &push_constants);
 
         if (index == 0 or object.mesh != objects[index - 1].mesh) {
             const offset: c.VkDeviceSize = 0;
-            c.vkCmdBindVertexBuffers(
-                cmd, 0, 1, &object.mesh.vertex_buffer.buffer, &offset);
+            c.vkCmdBindVertexBuffers(cmd, 0, 1, &object.mesh.vertex_buffer.buffer, &offset);
         }
 
         c.vkCmdDraw(cmd, @as(u32, @intCast(object.mesh.vertices.len)), 1, 0, @intCast(index));
@@ -1865,12 +1799,7 @@ fn get_mesh(self: *Self, name: []const u8) ?*Mesh {
     return self.meshes.getPtr(name);
 }
 
-pub fn create_buffer(
-    self: *Self,
-    alloc_size: usize,
-    usage: c.VkBufferUsageFlags,
-    memory_usage: c.VmaMemoryUsage
-) AllocatedBuffer {
+pub fn create_buffer(self: *Self, alloc_size: usize, usage: c.VkBufferUsageFlags, memory_usage: c.VmaMemoryUsage) AllocatedBuffer {
     const buffer_ci = std.mem.zeroInit(c.VkBufferCreateInfo, .{
         .sType = c.VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
         .size = alloc_size,
@@ -1882,13 +1811,7 @@ pub fn create_buffer(
     });
 
     var buffer: AllocatedBuffer = undefined;
-    check_vk(c.vmaCreateBuffer(
-        self.vma_allocator,
-        &buffer_ci,
-        &vma_alloc_info,
-        &buffer.buffer,
-        &buffer.allocation,
-        null)) catch @panic("Failed to create buffer");
+    check_vk(c.vmaCreateBuffer(self.vma_allocator, &buffer_ci, &vma_alloc_info, &buffer.buffer, &buffer.allocation, null)) catch @panic("Failed to create buffer");
 
     return buffer;
 }
@@ -1914,10 +1837,7 @@ pub fn immediate_submit(self: *Self, submit_ctx: anytype) void {
                 is_ptr = true;
                 switch (Context) {
                     .Struct, .Union, .Enum, .Opaque => {},
-                    else => @compileError(
-                        "Context must be a type with a submit function. "
-                        ++ @typeName(Context)
-                        ++ "is a pointer to a non struct/union/enum/opaque type"),
+                    else => @compileError("Context must be a type with a submit function. " ++ @typeName(Context) ++ "is a pointer to a non struct/union/enum/opaque type"),
                 }
             },
             else => @compileError("Context must be a type with a submit method. Cannot use: " ++ @typeName(Context)),
@@ -1927,7 +1847,7 @@ pub fn immediate_submit(self: *Self, submit_ctx: anytype) void {
             @compileError("Context should have a submit method");
         }
 
-        const submit_fn_info=  @typeInfo(@TypeOf(Context.submit));
+        const submit_fn_info = @typeInfo(@TypeOf(Context.submit));
         if (submit_fn_info != .Fn) {
             @compileError("Context submit method should be a function");
         }
@@ -1951,13 +1871,11 @@ pub fn immediate_submit(self: *Self, submit_ctx: anytype) void {
         .sType = c.VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
         .flags = c.VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
     });
-    check_vk(c.vkBeginCommandBuffer(cmd, &commmand_begin_ci))
-        catch @panic("Failed to begin command buffer");
+    check_vk(c.vkBeginCommandBuffer(cmd, &commmand_begin_ci)) catch @panic("Failed to begin command buffer");
 
     submit_ctx.submit(cmd);
 
-    check_vk(c.vkEndCommandBuffer(cmd))
-        catch @panic("Failed to end command buffer");
+    check_vk(c.vkEndCommandBuffer(cmd)) catch @panic("Failed to end command buffer");
 
     const submit_info = std.mem.zeroInit(c.VkSubmitInfo, .{
         .sType = c.VK_STRUCTURE_TYPE_SUBMIT_INFO,
@@ -1965,16 +1883,12 @@ pub fn immediate_submit(self: *Self, submit_ctx: anytype) void {
         .pCommandBuffers = &cmd,
     });
 
-    check_vk(c.vkQueueSubmit(self.graphics_queue, 1, &submit_info, self.upload_context.upload_fence))
-        catch @panic("Failed to submit to graphics queue");
+    check_vk(c.vkQueueSubmit(self.graphics_queue, 1, &submit_info, self.upload_context.upload_fence)) catch @panic("Failed to submit to graphics queue");
 
-    check_vk(c.vkWaitForFences(self.device, 1, &self.upload_context.upload_fence, c.VK_TRUE, 1_000_000_000))
-        catch @panic("Failed to wait for upload fence");
-    check_vk(c.vkResetFences(self.device, 1, &self.upload_context.upload_fence))
-        catch @panic("Failed to reset upload fence");
+    check_vk(c.vkWaitForFences(self.device, 1, &self.upload_context.upload_fence, c.VK_TRUE, 1_000_000_000)) catch @panic("Failed to wait for upload fence");
+    check_vk(c.vkResetFences(self.device, 1, &self.upload_context.upload_fence)) catch @panic("Failed to reset upload fence");
 
-    check_vk(c.vkResetCommandPool(self.device, self.upload_context.command_pool, 0))
-        catch @panic("Failed to reset command pool");
+    check_vk(c.vkResetCommandPool(self.device, self.upload_context.command_pool, 0)) catch @panic("Failed to reset command pool");
 }
 
 // Error checking for vulkan and SDL
@@ -1982,14 +1896,14 @@ pub fn immediate_submit(self: *Self, submit_ctx: anytype) void {
 
 fn check_sdl(res: c_int) void {
     if (res != 0) {
-        log.err("Detected SDL error: {s}", .{ c.SDL_GetError() });
+        log.err("Detected SDL error: {s}", .{c.SDL_GetError()});
         @panic("SDL error");
     }
 }
 
 fn check_sdl_bool(res: c.SDL_bool) void {
     if (res != c.SDL_TRUE) {
-        log.err("Detected SDL error: {s}", .{ c.SDL_GetError() });
+        log.err("Detected SDL error: {s}", .{c.SDL_GetError()});
         @panic("SDL error");
     }
 }

@@ -65,7 +65,7 @@ const obj_loader = @import("obj_loader.zig");
 
 pub fn load_from_obj(a: std.mem.Allocator, filepath: []const u8) Mesh {
     var obj_mesh = obj_loader.parse_file(a, filepath) catch |err| {
-        std.log.err("Failed to load obj file: {s}", .{ @errorName(err) });
+        std.log.err("Failed to load obj file: {s}", .{@errorName(err)});
         unreachable;
     };
     defer obj_mesh.deinit();
