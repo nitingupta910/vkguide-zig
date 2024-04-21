@@ -1,7 +1,7 @@
 const std = @import("std");
 const builtin = @import("builtin");
 
-pub fn build(b: *std.Build) void {
+pub fn build(b: *std.Build) !void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
@@ -18,7 +18,8 @@ pub fn build(b: *std.Build) void {
     exe.linkSystemLibrary(vk_lib_name);
     exe.addLibraryPath(.{ .cwd_relative = "thirdparty/sdl3/lib" });
     exe.addIncludePath(.{ .cwd_relative = "thirdparty/sdl3/include" });
-    if (b.env_map.get("VULKAN_SDK")) |path| {
+    var env_map = try std.process.getEnvMap(b.allocator);
+    if (env_map.get("VULKAN_SDK")) |path| {
         exe.addLibraryPath(.{ .cwd_relative = std.fmt.allocPrint(b.allocator, "{s}/lib", .{path}) catch @panic("OOM") });
         exe.addIncludePath(.{ .cwd_relative = std.fmt.allocPrint(b.allocator, "{s}/include", .{path}) catch @panic("OOM") });
     }
@@ -48,7 +49,7 @@ pub fn build(b: *std.Build) void {
     });
     imgui_lib.addIncludePath(.{ .path = "thirdparty/imgui/" });
     imgui_lib.addIncludePath(.{ .path = "thirdparty/sdl3/include/" });
-    if (b.env_map.get("VULKAN_SDK")) |path| {
+    if (env_map.get("VULKAN_SDK")) |path| {
         imgui_lib.addLibraryPath(.{ .cwd_relative = std.fmt.allocPrint(b.allocator, "{s}/lib", .{path}) catch @panic("OOM") });
         imgui_lib.addIncludePath(.{ .cwd_relative = std.fmt.allocPrint(b.allocator, "{s}/include", .{path}) catch @panic("OOM") });
     }
